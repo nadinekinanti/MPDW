@@ -1,1 +1,7 @@
+## latihan mpdw
+
+```{r}
+x=3
+x
+```
 

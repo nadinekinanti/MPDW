@@ -1,7 +1,7 @@
 
 ---
-title: "Pertemuan 2 - Regresi"
-author: Nadine Kinanti
+title: "Latihan Kuliah Pertemuan 2"
+author: Nadine Kinanti - M0401241025
 output:
   html_document:
     theme: yeti
@@ -14,15 +14,6 @@ output:
 # Pemanggilan *Packages*
 
 ```{r}
-install.packages("https://cran.r-project.org/src/contrib/Archive/orcutt/orcutt_2.1.tar.gz", repos = NULL, type = "source")
-```
-
-```{r}
-install.packages("orcutt")
-install.packages("HoRM")
-```
-
-```{r}
 library(dplyr)
 library(TTR)
 library(forecast)
@@ -31,195 +22,46 @@ library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
 library(HoRM) #untuk membuat model regresi Hildreth-Lu
 ```
 
-# Input Data
+# Pangsa Pasar dan Harga
+## Input Data
 
 ```{r}
-market_share <- c(3.63, 4.20, 3.33, 4.54, 2.89, 4.87, 4.90, 5.29, 6.18, 7.20,
-                  7.25, 6.09, 6.80, 8.65, 8.43, 8.29, 7.18, 7.90, 8.45, 8.23)
-price <- c(0.97, 0.95, 0.99, 0.91, 0.98, 0.90, 0.89, 0.86, 0.85, 0.82,
-           0.79, 0.83, 0.81, 0.77, 0.76, 0.80, 0.83, 0.79, 0.76, 0.78)
+market_share <- c(3.63, 4.20, 3.33, 4.54, 2.89, 4.87, 4.90, 5.29, 6.18, 7.20, 7.25, 6.09, 6.80, 8.65, 8.43, 8.29, 7.18, 7.90, 8.45, 8.23)
+price <- c(0.97, 0.95, 0.99, 0.91, 0.98, 0.90, 0.89, 0.86, 0.85, 0.82, 0.79, 0.83, 0.81, 0.77, 0.76, 0.80, 0.83, 0.79, 0.76, 0.78)
 dtmp <- cbind(market_share,price)
 dtmp <- as.data.frame(dtmp)
 dtmp
 ```
 
-# Eksplorasi Data
+## Eksplorasi Data
 
-```{r}
-#Membentuk objek time series
-data.ts<-ts(dtmp$price)
-data.ts
-
-#Membuat plot time series
-ts.plot(data.ts, xlab="Time Period ", ylab="price", main= "Time Series Plot of price")
-points(data.ts)
-```
-
-Selanjutnya akan dilakukan ramalan dan pemulusan dengan metode DMA dan DES karena terlihat pada plot di atas menunjukkan adanya *trend*.
-
-```{r}
-dt.sma <- SMA(data.ts, n=3)
-dma <- SMA(dt.sma, n = 3)
-At <- 2*dt.sma - dma
-Bt <- 2/(3-1)*(dt.sma - dma)
-dt.dma<- At+Bt
-dt.ramal<- c(NA, dt.dma)
-
-t = 1:5
-f = c()
-
-for (i in t) {
-  f[i] = At[length(At)] + Bt[length(Bt)]*(i)
-}
-```
-
-```{r}
-dt.gab <- cbind(aktual = c(data.ts,rep(NA,3)), 
-                pemulusan1 = c(dt.sma,rep(NA,3)),
-                pemulusan2 = c(dt.dma, rep(NA,3)),
-                At = c(At, rep(NA,3)), 
-                Bt = c(Bt,rep(NA,3)),
-                ramalan = c(dt.ramal, f[-1]))
-dt.gab
-
-#Plot time series
-ts.plot(dt.gab[,1], xlab="Time Period ", ylab="price", 
-        main= "DMA N=4 Data price", ylim=c(2,10))
-points(dt.gab[,1])
-points(dt.gab[,3])
-points(dt.gab[,6])
-lines(dt.gab[,3],col="navy",lwd=2)
-lines(dt.gab[,6],col="red",lwd=2)
-legend("topleft",c("data aktual","data pemulusan","data peramalan"), 
-       lty=8, col=c("black","navy","red"), cex=0.8)
-```
-
-Selanjutnya akan dilihat keakuratan dari metode DMA
-
-```{r}
-#Menghitung nilai keakuratan
-error.dma = data.ts-dt.ramal[1:length(data.ts)]
-SSE.dma = sum(error.dma[6:length(data.ts)]^2)
-MSE.dma = mean(error.dma[6:length(data.ts)]^2)
-MAPE.dma = mean(abs((error.dma[6:length(data.ts)]/data.ts[6:length(data.ts)])*100))
-
-akurasi.dma <- matrix(c(SSE.dma, MSE.dma, MAPE.dma))
-row.names(akurasi.dma)<- c("SSE", "MSE", "MAPE")
-colnames(akurasi.dma) <- c("Akurasi m = 3")
-akurasi.dma
-```
-
-Selanjutnya akan digunakan metode *Double Exponential Smoothing* dengan cara sebagai berikut.
-
-Pertama akan data akan dibagi menjadi data *training* dan data *testing*.
-
-```{r}
-#membagi training dan testing
-training<-dtmp[1:5,2]
-testing<-dtmp[6:10,2]
-
-#data time series
-training.ts<-ts(training)
-testing.ts<-ts(testing,start=11)
-
-#eksplorasi data
-plot(data.ts, col="red",main="Plot semua data")
-points(data.ts)
-
-plot(training.ts, col="navy",main="Plot data training")
-points(training.ts)
-```
-
-Selanjutnya akan dilakukan pemulusan dengan DES, kali ini langsung dicari lambda dan gamma optimum sebagai berikut. Nilai lambda dan gamma optimum dapat dilihat pada smoothing parameters alpha untuk nilai lambda dan beta untuk nilai gamma.
-
-```{r}
-#Lamda dan gamma optimum
-des.opt<- HoltWinters(training.ts, gamma = FALSE)
-des.opt
-plot(des.opt)
-legend("topleft", c("Data Aktual", "Peramalan"), col = c("black", "red"), 
-       lty = c(1,1))
-
-
-#ramalan
-ramalandesopt<- forecast(des.opt, h=5)
-ramalandesopt
-```
-
-Selanjutnya akan dicari akurasi dari metode DES.
-
-```{r}
-ssedes.train<-des.opt$SSE
-msedes.train<-ssedes.train/length(training.ts)
-sisaandes<-ramalandesopt$residuals
-head(sisaandes)
-
-mapedes.train <- sum(abs(sisaandes[3:length(training.ts)]/training.ts[3:length(training.ts)])*100)/length(training.ts)
-
-akurasides.opt <- matrix(c(ssedes.train,msedes.train,mapedes.train))
-row.names(akurasides.opt)<- c("SSE", "MSE", "MAPE")
-colnames(akurasides.opt) <- c("Akurasi lamda dan gamma optimum")
-akurasides.opt
-```
-
-```{r}
-#Akurasi data testing
-selisihdesopt<-ramalandesopt$mean-testing.ts
-selisihdesopt
-
-SSEtestingdesopt<-sum(selisihdesopt^2)
-SSEtestingdesopt<-SSEtestingdesopt/length(testing.ts)
-MAPEtestingdesopt<-sum(abs(selisihdesopt/testing.ts)*100)/length(testing.ts)
-
-akurasiDesTesting <- matrix(c(SSEtestingdesopt,SSEtestingdesopt,MAPEtestingdesopt))
-row.names(akurasiDesTesting)<- c("SSE", "MSE", "MAPE")
-colnames(akurasiDesTesting) <- c("Akurasi lamda dan gamma optimum")
-akurasiDesTesting
-```
-```{r}
-length(testing.ts)
-length(selisihdesopt)
-
-testing.ts
-selisihdesopt
-```
-
-
-Setelah didapatkan nilai akurasi untuk metode DMA dan DES, selanjutnya akan dibandingkan keakuratan antar metode keduanya.
-
-```{r}
-cbind(akurasi.dma, akurasides.opt)
-```
-
-Berdasarkan perbandingan akurasi tersebut, terlihat nilai SSE, MSE, dan MAPE metode DES lebih kecil dibandingkan dengan metode DMA. Oleh karena itu, metode peramalan dan pemulusan yang terbaik antara keduanya adalah dengan metode DES.
-
-Setelah melakukan peramalan, data yang telah dimasukkan kemudian dieksplorasi. Eksplorasi pertama yang dilakukan adalah dengan menggunakan *scatter plot*.
+Setelah melakukan input, data kemudian dieksplorasi. Eksplorasi pertama yang dilakukan adalah dengan menggunakan *scatter plot*.
 
 ```{r}
 #Eksplorasi Data
 #Pembuatan Scatter Plot
-plot(tahun,ipm, pch = 20, col = "blue",
-     main = "Scatter Plot Tahun vs Nilai IPM",
-     xlab = "Tahun",
-     ylab = "Nilai IPM")
+plot(market_share, price, pch = 20, col = "navy",
+     main = "Scatter Plot Pangsa Pasar vs Harga",
+     xlab = "Pangsa Pasar",
+     ylab = "Harga")
 #Menampilkan Nilai Korelasi
-cor(tahun,ipm)
+cor(market_share,price)
 ```
 
-Berdasarkan scatter plot di atas, terlihat adanya hubungan / korelasi positif antara peubah tahun dengan nilai IPM, terlihat titik-titik pada plot yang naik ke arah kanan atas. Hal tersebut juga diperkuat dengan hasil perhitungan aplikasi `R` di mana didapatkan nilai korelasi sebesar $0.9966848$.
+Berdasarkan scatter plot di atas, terlihat adanya hubungan/korelasi negatif antara peubah Pangsa Pasar dengan Harga, terlihat titik-titik pada plot yang turun ke arah kanan bawah. Hal tersebut juga diperkuat dengan hasil perhitungan aplikasi `R` di mana didapatkan nilai korelasi sebesar $-0.9752564$.
 
 Setalah mengetahui adanya hubungan antar dua peubah, maka model regresi dapat ditentukan.
 
-# Regresi
+## Regresi
 
 ```{r}
 #Pembuatan Model Regresi
 #model regresi
-model<- lm(ipm~tahun, data = dtGorontalo)
+model<- lm(market_share~price, data = dtmp)
 summary(model)
 ```
 
-Model yang dihasilkan adalah $$y_i=-1118+0.5873x_t$$ Berdasarkan ringkasan model dapat diketahui bahwa hasil uji F memiliki *p-value* \< $\alpha$ (5%). Artinya, minimal terdapat satu variabel yang berpengaruh nyata terhadap model. Hasil uji-t parsial kedua parameter regresi, yaitu intersep dan koefisien regresi juga menunjukkan hal yang sama, yaitu memiliki *p-value* \< $\alpha$ (5%) sehingga nyata dalam taraf 5%. Selanjutnya dapat dilihat juga nilai $R^2=0.9934$. Artinya, sebesar 99.34% keragaman nilai IPM dapat dijelaskan oleh peubah tahun. Hasil ini menunjukkan hasil yang bagus, seolah mendapatkan hasil terbaik. Namun, kita perlu melakukan uji terhadap sisaannya seperti berikut ini.
+Model yang dihasilkan adalah $$y_i=26.91-24.29x_t$$ Berdasarkan ringkasan model dapat diketahui bahwa hasil uji F memiliki *p-value* \< $\alpha$ (5%). Artinya, minimal terdapat satu variabel yang berpengaruh nyata terhadap model. Hasil uji-t parsial kedua parameter regresi, yaitu intersep dan koefisien regresi juga menunjukkan hal yang sama, yaitu memiliki *p-value* \< $\alpha$ (5%) sehingga nyata dalam taraf 5%. Selanjutnya dapat dilihat juga nilai $R^2=0.9511$. Artinya, sebesar 95.11% keragaman nilai Pangsa Pasar dapat dijelaskan oleh peubah harga. Hasil ini menunjukkan hasil yang bagus, seolah mendapatkan hasil terbaik. Namun, kita perlu melakukan uji terhadap sisaannya seperti berikut ini.
 
 ```{r}
 #sisaan dan fitted value
@@ -229,16 +71,16 @@ fitValue<- predict(model)
 #Diagnostik dengan eksploratif
 par(mfrow = c(2,2))
 qqnorm(sisaan)
-qqline(sisaan, col = "steelblue", lwd = 2)
-plot(fitValue, sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+qqline(sisaan, col = "navy", lwd = 2)
+plot(fitValue, sisaan, col = "navy", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
 abline(a = 0, b = 0, lwd = 2)
 hist(sisaan, col = "steelblue")
-plot(seq(1,12,1), sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
-lines(seq(1,12,1), sisaan, col = "red")
+plot(seq(1,20,1), sisaan, col = "navy", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,20,1), sisaan, col = "red")
 abline(a = 0, b = 0, lwd = 2)
 ```
 
-Dua plot di samping kiri digunakan untuk melihat apakah sisaan menyebar normal. Normal Q-Q Plot di atas menunjukkan bahwa sisaan cenderung menyebar normal, tetapi histogram dari sisaan tidak menunjukkan demikian. Selanjutnya, dua plot di samping kanan digunakan untuk melihat autokorelasi. Plot Sisaan vs *Fitted Value* dan Plot Sisaan vs *Order* menunjukkan adanya pola pada sisaan. Untuk lebih lanjut akan digunakan uji formal melihat normalitas sisaan dan plot ACF dan PACF untuk melihat apakah ada autokorelasi atau tidak.
+Dua plot di sebelah kiri digunakan untuk melihat apakah sisaan menyebar normal. Normal Q-Q Plot menunjukkan bahwa sisaan cenderung menyebar normal karena titik-titik berada cukup dekat dengan garis diagonal, sedangkan histogram sisaan menunjukkan penyebaran yang kurang simetris. Selanjutnya, dua plot di sebelah kanan digunakan untuk melihat pola sisaan. Plot Sisaan vs *Fitted Value* dan Sisaan vs *Order* menunjukkan adanya variasi pola pada sisaan. Untuk lebih lanjut, akan digunakan uji formal untuk melihat normalitas sisaan serta plot ACF dan PACF untuk melihat ada atau tidaknya autokorelasi.
 
 ```{r}
 #Melihat Sisaan Menyebar Normal/Tidak
@@ -266,11 +108,11 @@ Berdasarkan plot ACF dan PACF, terlihat semua dalam rentang batas dan tidak ada 
 dwtest(model)
 ```
 
-Berdasarkan hasil DW Test, didapatkan nilai $DW = 1.2644$ dan *p-value* = $0.03741$. Berdasarkan tabel Durbin-Watson diperoleh nilai $DL = 0.9771$ dan $DU = 1.331$. Nilai DW masih berada di antara nilai DL dan DU. Artinya, berada di daerah inkonklusif, tidak dapat dikatakan berada di daerah autokorelasi positif maupun bebas dari autokorelasi. Namun, dengan nilai *p-value* \< 0.05 dapat disimpulkan bahwa tolak H0, cukup bukti mengatakan adanya autokorelasi. Oleh karena itu, diperlukan penangan autokorelasi. Penanganan yang akan digunakan menggunakan dua metode, yaitu Cochrane-Orcutt dan Hildret-Lu.
+Berdasarkan hasil DW Test, didapatkan nilai $DW = 1.1358$ dan *p-value* = $0.009813$. Berdasarkan tabel Durbin-Watson dengan alpha 5%, n=20, dan k=1 diperoleh nilai $DL = 1.2015$ dan $DU = 1.4107$. Nilai DW lebih kecil dari DL, sehingga dapat disimpulkan terdapat autokorelasi positif. Hal ini diperkuat dengan *p-value* = 0,009813 < 0,05, sehingga \(H_0\) ditolak. Oleh karena itu, diperlukan penanganan autokorelasi menggunakan metode Cochrane-Orcutt dan Hildreth-Lu.
 
-# Penanganan Autokorelasi
+## Penanganan Autokorelasi
 
-## Metode Cochrane-Orcutt
+### Metode Cochrane-Orcutt
 
 Penanganan metode Cochrane-Orcutt dapat dilakukan dengan bantuan packages Orcutt pada aplikasi `R` maupun secara manual. Berikut ini ditampilkan cara menggunakan bantuan `library` *packages* `Orcutt`.
 
@@ -280,7 +122,7 @@ modelCO<-cochrane.orcutt(model)
 modelCO
 ```
 
-Hasil keluaran model setelah dilakukan penanganan adalah sebagai berikut. $$y_i=-1062.042646+0.559755x_t$$ Hasil juga menunjukkan bahwa nilai DW dan p-value meningkat menjadi $1.49014$ dan $0.09403$. Nilai DW sudah berada pada rentang DU \< DW \< 4-DU atau $1.331 < DW < 2.669$. Hal tersebut juga didukung dengan nilai *p-value* \> 0.05, artinya belum cukup bukti menyatakan bahwa sisaan terdapat autokorelasi pada taraf nyata 5%. Untuk nilai $ρ ̂$ optimum yang digunakan adalah $0.3409214$. Nilai tersebut dapat diketahui dengan *syntax* berikut.
+Hasil keluaran model setelah dilakukan penanganan adalah sebagai berikut. $$y_i=26.72209-24.08413x_t$$ Hasil juga menunjukkan bahwa nilai DW dan p-value meningkat menjadi $1.95804$ dan $0.4151$. Nilai DW berada pada rentang DU \< DW \< 4-DU atau $1.4107 < DW < 2,5893$ sehingga dapat disimpulkan bahwa tidak terdapat autokorelasi pada sisaan. Hal ini juga didukung oleh nilai p-value > 0,05, sehingga belum cukup bukti untuk menyatakan adanya autokorelasi pada taraf nyata 5%. Untuk nilai $ρ ̂$ optimum yang digunakan adalah $0.425232$. Nilai tersebut dapat diketahui dengan *syntax* berikut.
 
 ```{r}
 #Rho optimum
@@ -291,18 +133,18 @@ rho
 Selanjutnya akan dilakukan transformasi secara manual dengan syntax berikut ini.
 
 ```{r}
-ipm
+market_share
 ```
 
 ```{r}
-ipm[-1]
+market_share[-1]
 ```
 
 ```{r}
 #Transformasi Manual
-ipm.trans<- ipm[-1]-ipm[-12]*rho
-tahun.trans<- tahun[-1]-tahun[-12]*rho
-modelCOmanual<- lm(ipm.trans~tahun.trans)
+ms.trans<- market_share[-1]-market_share[-20]*rho
+p.trans<-price[-1]-price[-20]*rho
+modelCOmanual<- lm(ms.trans~p.trans)
 summary(modelCOmanual)
 ```
 
@@ -319,7 +161,7 @@ b1
 
 Hasil perhitungan koefisien regresi tersebut akan menghasilkan hasil yang sama dengan model yang dihasilkan menggunakan *packages*.
 
-## Metode Hildreth-Lu
+### Metode Hildreth-Lu
 
 Penanganan kedua adalah menggunakan metode Hildreth-Lu. Metode ini akan mencari nilai SSE terkecil dan dapat dicari secara manual maupun menggunakan packages. Jika menggunakan packages, gunakan `library` *packages* `HORM`.
 
@@ -327,11 +169,11 @@ Penanganan kedua adalah menggunakan metode Hildreth-Lu. Metode ini akan mencari 
 library(HoRM)
 
 # ambil y dan x (satu prediktor saja)
-y <- dtGorontalo$ipm
-x <- dtGorontalo$tahun
+y <- dtmp$market_share
+x <- dtmp$price
 
 # grid search rho 0–0.9
-r <- seq(0, 0.9, by = 0.1)
+r <- seq(0.1, 0.9, by = 0.1)
 tab <- data.frame(
   rho = r,
   SSE = sapply(r, function(rr) deviance(hildreth.lu(y, x, rr)))
@@ -341,7 +183,6 @@ tab            # tabel rho vs SSE
 rho_hat <- tab$rho[which.min(tab$SSE)]   # rho terbaik
 fit_hl  <- hildreth.lu(y, x, rho_hat)    # model final
 summary(fit_hl)
-
 ```
 
 ```{r}
@@ -364,40 +205,43 @@ tab <- data.frame("rho" = r, "SSE" = sapply(r, function(i){deviance(hildreth.lu.
 round(tab, 4)
 ```
 
-Pertama-tama akan dicari di mana kira-kira $ρ$ yang menghasilkan SSE minimum. Pada hasil di atas terlihat $ρ$ minimum ketika 0.3. Namun, hasil tersebut masih kurang teliti sehingga akan dicari kembali $ρ$ yang lebih optimum dengan ketelitian yang lebih. Jika sebelumnya jarak antar $ρ$ yang dicari adalah 0.1, kali ini jarak antar $ρ$ adalah 0.001 dan dilakukan pada selang 0.2 sampai dengan 0.5.
+Pertama-tama akan dicari di mana kira-kira $ρ$ yang menghasilkan SSE minimum. Pada hasil di atas terlihat $ρ$ minimum ketika 0.4. Namun, hasil tersebut masih kurang teliti sehingga akan dicari kembali $ρ$ yang lebih optimum dengan ketelitian yang lebih. Jika sebelumnya jarak antar $ρ$ yang dicari adalah 0.1, kali ini jarak antar $ρ$ adalah 0.001 dan dilakukan pada selang 0.2 sampai dengan 0.6.
 
 ```{r}
 #Rho optimal di sekitar 0.4
-rOpt <- seq(0.2,0.5, by= 0.001)
+rOpt <- seq(0.2,0.6, by= 0.001)
 tabOpt <- data.frame("rho" = rOpt, "SSE" = sapply(rOpt, function(i){deviance(hildreth.lu.func(i, model))}))
 head(tabOpt[order(tabOpt$SSE),])
+```
 
+
+```{r}
 #Grafik SSE optimum
 par(mfrow = c(1,1))
 plot(tab$SSE ~ tab$rho , type = "l", xlab = "Rho", ylab = "SSE")
 abline(v = tabOpt[tabOpt$SSE==min(tabOpt$SSE),"rho"], lty = 2, col="red",lwd=2)
-text(x=0.341, y=0.2397500, labels = "rho=0.341", cex = 0.8)
+text(x=0.425, y=2.659368, labels = "rho=0.425", cex = 0.8)
 ```
 
-Perhitungan yang dilakukan aplikasi `R` menunjukkan bahwa nilai $ρ$ optimum, yaitu saat SSE terkecil terdapat pada nilai $ρ=0.341$. Hal tersebut juga ditunjukkan pada plot. Selanjutnya, model dapat didapatkan dengan mengevaluasi nilai $ρ$ ke dalam fungsi `hildreth.lu.func`, serta dilanjutkan dengan pengujian autokorelasi dengan uji Durbin-Watson. Namun, setelah pengecekan tersebut tidak lupa koefisien regresi tersebut digunakan untuk transformasi balik. Persamaan hasil transformasi itulah yang menjadi persamaan sesungguhnya.
+Perhitungan yang dilakukan aplikasi `R` menunjukkan bahwa nilai $ρ$ optimum, yaitu saat SSE terkecil terdapat pada nilai $ρ=0.425$. Hal tersebut juga ditunjukkan pada plot. Selanjutnya, model dapat didapatkan dengan mengevaluasi nilai $ρ$ ke dalam fungsi `hildreth.lu.func`, serta dilanjutkan dengan pengujian autokorelasi dengan uji Durbin-Watson. Namun, setelah pengecekan tersebut tidak lupa koefisien regresi tersebut digunakan untuk transformasi balik. Persamaan hasil transformasi itulah yang menjadi persamaan sesungguhnya.
 
 ```{r}
 #Model terbaik
-modelHL <- hildreth.lu.func(0.341, model)
+modelHL <- hildreth.lu.func(0.425, model)
 summary(modelHL)
 
 #Transformasi Balik
-cat("y = ", coef(modelHL)[1]/(1-0.341), "+", coef(modelHL)[2],"x", sep = "")
+cat("y = ", coef(modelHL)[1]/(1-0.425), "+", coef(modelHL)[2],"x", sep = "")
 ```
 
-Setelah dilakukan tranformasi balik, didapatkan model dengan metode Hildreth-Lu sebagai berikut. $$y_i=-1062.032+0.5597492x_t$$
+Setelah dilakukan tranformasi balik, didapatkan model dengan metode Hildreth-Lu sebagai berikut. $$y_i=26.72268-24.08484x_t$$
 
 ```{r}
 #Deteksi autokorelasi
 dwtest(modelHL)
 ```
 
-Hasil uji Durbin-Watson juga menunjukkan bawah nilai DW sebesar $1.4092$ berada pada selang daerah tidak ada autokorelasi, yaitu pada rentang DU \< DW \< 4-DU atau $1.331 < DW < 2.669$. Hal tersebut juga didukung oleh *p-value* sebesar $0.09404$, di mana *p-value* \> $\alpha$=5%. Artinya tak tolak $H_0$ atau belum cukup bukti menyatakan bahwa ada autokorelasi dalam data nilai IPM dengan metode Hildreth-Lu pada taraf nyata 5%.
+Hasil uji Durbin-Watson juga menunjukkan bawah nilai DW sebesar $1.9577$ berada pada selang daerah tidak ada autokorelasi, yaitu pada rentang DU \< DW \< 4-DU atau $1.4107 < DW < 2,5893$. Hal tersebut juga didukung oleh *p-value* sebesar $0.4148$, di mana *p-value* \> $\alpha$=5%. Artinya tak tolak $H_0$ atau belum cukup bukti menyatakan bahwa ada autokorelasi dalam data nilai IPM dengan metode Hildreth-Lu pada taraf nyata 5%.
 
 Terakhir, akan dibandingkan nilai SSE dari ketiga metode (metode awal, metode Cochrane-Orcutt, dan Hildreth-Lu).
 
@@ -406,9 +250,9 @@ Terakhir, akan dibandingkan nilai SSE dari ketiga metode (metode awal, metode Co
 sseModelawal <- anova(model)$`Sum Sq`[-1]
 sseModelCO <- anova(modelCOmanual)$`Sum Sq`[-1]
 sseModelHL <- anova(modelHL)$`Sum Sq`[-1]
-mseModelawal <- sseModelawal/length(ipm)
-mseModelCO <- sseModelCO/length(ipm)
-mseModelHL <- sseModelHL/length(ipm)
+mseModelawal <- sseModelawal/length(market_share)
+mseModelCO <- sseModelCO/length(market_share)
+mseModelHL <- sseModelHL/length(market_share)
 akurasi <- matrix(c(sseModelawal,sseModelCO,sseModelHL,
                     mseModelawal,mseModelCO,mseModelHL),nrow=2,ncol=3,byrow = T)
 colnames(akurasi) <- c("Model Awal", "Model Cochrane-Orcutt", "Model Hildreth-Lu")
@@ -416,17 +260,251 @@ row.names(akurasi) <- c("SSE","MSE")
 akurasi
 ```
 
-Berdasarkan hasil tersebut dapat diketahui bahwa hasil penanganan autokorelasi dengan metode Cochrane-Orcutt dan Hildreth-Lu memiliki SSE yang sama, sebesar $0.23975$ dan lebih baik dibandingkan model awal ketika autokorelasi masih terjadi, yaitu sebesar $0.3286364$.
+Berdasarkan hasil tersebut dapat diketahui bahwa hasil penanganan autokorelasi dengan metode Cochrane-Orcutt dan Hildreth-Lu memiliki SSE yang sama, sebesar $2.659368$.
 
-# Simpulan
+## Simpulan
 
-Autokorelasi yang terdapat pada data IPM terjadi akibat adanya korelasi di antara unsur penyusunnya. Indikator IPM yang erat hubungannya dengan perekonomian sangat rawan menjadi penyebab adanya autokorelasi. Adanya autokorelasi menyebabkan model regresi kurang baik karena akan meingkatkan galatnya. Autokorelasi dapat dideteksi secara eksploratif melalui plot sisaan, ACF, dan PACF, serta dengan uji formal Durbin-Watson. Namun, autokorelasi tersebut dapat ditangani dengan metode Cochrane-Orcutt dan Hildreth-Lu. Kedua metode menghasilkan nilai SSE yang sama, artinya keduanya baik untuk digunakan.
+Autokorelasi yang terdapat pada data Pangsa Pasar terjadi akibat adanya korelasi di antara unsur penyusunnya. Indikator Pangsa Pasar yang erat hubungannya dengan perekonomian sangat rawan menjadi penyebab adanya autokorelasi. Adanya autokorelasi menyebabkan model regresi kurang baik karena akan meingkatkan galatnya. Autokorelasi dapat dideteksi secara eksploratif melalui plot sisaan, ACF, dan PACF, serta dengan uji formal Durbin-Watson. Namun, autokorelasi tersebut dapat ditangani dengan metode Cochrane-Orcutt dan Hildreth-Lu. Kedua metode menghasilkan nilai SSE yang sama, artinya keduanya baik untuk digunakan.
 
-# Daftar Pustaka
+# Penjualan dan Iklan
+## Input Data
 
-Aprianto A, Debataraja NN, Imro'ah N. 2020. Metode cochrane-orcutt untuk mengatasi autokorelasi pada estimasi parameter ordinary least squares. *Bimaster : Buletin Ilmiah Matematika, Statistika dan Terapannya*. 9(1):95--102. <doi:10.26418/bbimst.v9i1.38590>.
+```{r}
+sales <- c(11.7, 12.0, 12.3, 12.8, 13.1, 13.6, 13.9, 14.4, 14.7, 15.3, 15.5, 15.8, 16.1, 16.6, 16.9, 16.7, 16.9, 17.4, 17.6, 17.9, 18.0, 17.9, 18.0, 18.2, 18.2, 18.3, 18.6, 19.2, 19.3, 19.5, 19.2, 19.3, 19.5, 20.0, 20.0, 19.9, 19.8, 19.9, 20.2, 21.0)
+advertising <- c(9.4, 9.6, 10.0, 10.4, 10.8, 10.9, 11.7, 12.2, 12.5, 12.9, 13.0, 13.2, 13.8, 14.2, 14.6, 14.4, 15.0, 15.4, 15.7, 15.9, 15.9, 16.0, 16.3, 16.2, 16.8, 17.3, 17.6, 18.1, 18.3, 18.5, 18.7, 18.9, 19.2, 20.0, 20.0, 20.3, 20.4, 21.0, 21.5, 22.1)
+dtsa <- cbind(sales, advertising)
+dtsa <- as.data.frame(dtsa)
+dtsa
+```
 
-BPS. 2021a. *Indeks Pembangunan Manusia 2020*. Jakarta (ID): Badan Pusat Statistik.
+## Eksplorasi Data
 
-BPS. 2021b. Indeks Pembangunan Manusia (IPM) 2021. *Berita Resmi Statistik*., siap terbit.
+Setelah melakukan input, data kemudian dieksplorasi. Eksplorasi pertama yang dilakukan adalah dengan menggunakan *scatter plot*.
 
+```{r}
+#Eksplorasi Data
+#Pembuatan Scatter Plot
+plot(sales, advertising, pch = 20, col = "navy",
+     main = "Scatter Plot Penjualan vs Iklan",
+     xlab = "Penjualan",
+     ylab = "Iklan")
+#Menampilkan Nilai Korelasi
+cor(sales, advertising)
+```
+
+Berdasarkan scatter plot di atas, terlihat adanya hubungan/korelasi positif antara peubah Penjualan dengan Iklan, terlihat titik-titik pada plot yang naik ke arah kanan atas. Hal tersebut juga diperkuat dengan hasil perhitungan aplikasi `R` di mana didapatkan nilai korelasi sebesar $0.9795849$.
+
+Setalah mengetahui adanya hubungan antar dua peubah, maka model regresi dapat ditentukan.
+
+## Regresi
+
+```{r}
+#Pembuatan Model Regresi
+#model regresi
+model<- lm(sales~advertising, data = dtsa)
+summary(model)
+```
+
+Model yang dihasilkan adalah $$y_i=5.96513+0.71035x_t$$ Berdasarkan ringkasan model dapat diketahui bahwa hasil uji F memiliki *p-value* \< $\alpha$ (5%). Artinya, minimal terdapat satu variabel yang berpengaruh nyata terhadap model. Hasil uji-t parsial kedua parameter regresi, yaitu intersep dan koefisien regresi juga menunjukkan hal yang sama, yaitu memiliki *p-value* \< $\alpha$ (5%) sehingga nyata dalam taraf 5%. Selanjutnya dapat dilihat juga nilai $R^2=0.9596$. Artinya, sebesar 95.96% keragaman nilai Penjualan dapat dijelaskan oleh peubah Iklan. Hasil ini menunjukkan hasil yang bagus, seolah mendapatkan hasil terbaik. Namun, kita perlu melakukan uji terhadap sisaannya seperti berikut ini.
+
+```{r}
+#sisaan dan fitted value
+sisaan<- residuals(model)
+fitValue<- predict(model)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan)
+qqline(sisaan, col = "navy", lwd = 2)
+plot(fitValue, sisaan, col = "navy", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan, col = "steelblue")
+plot(seq(1,40,1), sisaan, col = "navy", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,40,1), sisaan, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+```
+
+Dua plot di sebelah kiri digunakan untuk melihat apakah sisaan menyebar normal. Normal Q-Q Plot menunjukkan bahwa sisaan cenderung menyebar normal karena titik-titik berada cukup dekat dengan garis diagonal, sedangkan histogram sisaan menunjukkan penyebaran yang kurang simetris. Selanjutnya, dua plot di sebelah kanan digunakan untuk melihat pola sisaan. Plot Sisaan vs *Fitted Value* dan Sisaan vs *Order* menunjukkan adanya pola sistematis pada sisaan. Untuk lebih lanjut, akan digunakan uji formal untuk melihat normalitas sisaan serta plot ACF dan PACF untuk melihat ada atau tidaknya autokorelasi.
+
+```{r}
+#Melihat Sisaan Menyebar Normal/Tidak
+#H0: sisaan mengikuti sebaran normal
+#H1: sisaan tidak mengikuti sebaran normal
+shapiro.test(sisaan)
+ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
+```
+Berdasarkan uji formal Shapiro-Wilk dan Kolmogorov-Smirnov, diperoleh p-value masing-masing sebesar 0,0188 dan 0,2948. Meskipun uji Shapiro-Wilk menunjukkan p-value < $\alpha$ (5%), uji Kolmogorov-Smirnov menunjukkan p-value > $\alpha$ (5%), sehingga sisaan cenderung memenuhi asumsi normalitas.
+
+```{r}
+#ACF dan PACF identifikasi autokorelasi
+par(mfrow = c(1,2))
+acf(sisaan)
+pacf(sisaan)
+```
+
+Berdasarkan plot ACF dan PACF, terdapat beberapa lag yang berada di luar batas signifikansi, sehingga mengindikasikan adanya autokorelasi pada sisaan. Untuk lebih memastikan, akan dilakukan uji formal dengan uji Durbin-Watson.
+
+```{r}
+#Deteksi autokorelasi dengan uji-Durbin Watson
+#H0: tidak ada autokorelasi
+#H1: ada autokorelasi
+dwtest(model)
+```
+
+Berdasarkan hasil DW Test, didapatkan nilai $DW = 0.16204$ dan *p-value* < $\alpha$ (5%). Berdasarkan tabel Durbin-Watson dengan alpha 5%, n=40, dan k=1 diperoleh nilai $DL = 1.4421$ dan $DU = 1.5444$. Nilai DW lebih kecil dari DL, sehingga dapat disimpulkan terdapat autokorelasi positif. Hal ini diperkuat dengan *p-value* < 0,05, sehingga \(H_0\) ditolak. Oleh karena itu, diperlukan penanganan autokorelasi menggunakan metode Cochrane-Orcutt dan Hildreth-Lu.
+
+## Penanganan Autokorelasi
+
+### Metode Cochrane-Orcutt
+
+Penanganan metode Cochrane-Orcutt dapat dilakukan dengan bantuan packages Orcutt pada aplikasi `R` maupun secara manual. Berikut ini ditampilkan cara menggunakan bantuan `library` *packages* `Orcutt`.
+
+```{r}
+#Penanganan Autokorelasi Cochrane-Orcutt
+modelCO<-cochrane.orcutt(model)
+modelCO
+```
+
+Hasil keluaran model setelah dilakukan penanganan adalah sebagai berikut. $$y_i=10.252375+0.488489x_t$$ Hasil juga menunjukkan bahwa nilai DW dan p-value meningkat menjadi $1.93925$ dan $0.378$. Nilai DW berada pada rentang DU \< DW \< 4-DU atau $1.5444 < DW < 2,4556$ sehingga dapat disimpulkan bahwa tidak terdapat autokorelasi pada sisaan. Hal ini juga didukung oleh nilai p-value > 0,05, sehingga belum cukup bukti untuk menyatakan adanya autokorelasi pada taraf nyata 5%. Untuk nilai $ρ ̂$ optimum yang digunakan adalah $0.903123$. Nilai tersebut dapat diketahui dengan *syntax* berikut.
+
+```{r}
+#Rho optimum
+rho<- modelCO$rho
+rho
+```
+
+Selanjutnya akan dilakukan transformasi secara manual dengan syntax berikut ini.
+
+```{r}
+sales
+```
+
+```{r}
+sales[-1]
+```
+
+```{r}
+#Transformasi Manual
+s.trans<- sales[-1]-sales[-40]*rho
+a.trans<-advertising[-1]-advertising[-40]*rho
+modelCOmanual<- lm(s.trans~a.trans)
+summary(modelCOmanual)
+```
+
+Hasil model transformasi bukan merupakan model sesungguhnya. Koefisien regresi masih perlu dicari kembali mengikuti $β_0^*=β_0+ρ ̂β_0$ dan $β_1^*=β_1$.
+
+```{r}
+#Mencari Penduga Koefisien Regresi setelah Transformasi ke Persamaan Awal
+b0bintang <- modelCOmanual$coefficients[-2]
+b0 <- b0bintang/(1-rho)
+b1 <- modelCOmanual$coefficients[-1]
+b0
+b1
+```
+
+Hasil perhitungan koefisien regresi tersebut akan menghasilkan hasil yang sama dengan model yang dihasilkan menggunakan *packages*.
+
+### Metode Hildreth-Lu
+
+Penanganan kedua adalah menggunakan metode Hildreth-Lu. Metode ini akan mencari nilai SSE terkecil dan dapat dicari secara manual maupun menggunakan packages. Jika menggunakan packages, gunakan `library` *packages* `HORM`.
+
+```{r}
+library(HoRM)
+
+# ambil y dan x (satu prediktor saja)
+y <- dtsa$sales
+x <- dtsa$advertising
+
+# grid search rho 0–0.9
+r <- seq(0.1, 0.9, by = 0.1)
+tab <- data.frame(
+  rho = r,
+  SSE = sapply(r, function(rr) deviance(hildreth.lu(y, x, rr)))
+)
+
+tab            # tabel rho vs SSE
+rho_hat <- tab$rho[which.min(tab$SSE)]   # rho terbaik
+fit_hl  <- hildreth.lu(y, x, rho_hat)    # model final
+summary(fit_hl)
+```
+
+```{r}
+#Penanganan Autokorelasi Hildreth lu
+# Hildreth-Lu
+hildreth.lu.func<- function(r, model){
+  x <- model.matrix(model)[,-1]
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  t <- 2:n
+  y <- y[t]-r*y[t-1]
+  x <- x[t]-r*x[t-1]
+  
+  return(lm(y~x))
+}
+
+#Pencariab rho yang meminimumkan SSE
+r <- c(seq(0.1,0.9, by= 0.1))
+tab <- data.frame("rho" = r, "SSE" = sapply(r, function(i){deviance(hildreth.lu.func(i, model))}))
+round(tab, 4)
+```
+
+Pertama-tama akan dicari di mana kira-kira $ρ$ yang menghasilkan SSE minimum. Pada hasil di atas terlihat $ρ$ minimum ketika 0.9. Namun, hasil tersebut masih kurang teliti sehingga akan dicari kembali $ρ$ yang lebih optimum dengan ketelitian yang lebih. Jika sebelumnya jarak antar $ρ$ yang dicari adalah 0.1, kali ini jarak antar $ρ$ adalah 0.001 dan dilakukan pada selang 0.8 sampai dengan 1.
+
+```{r}
+#Rho optimal di sekitar 0.9
+rOpt <- seq(0.8,1, by= 0.001)
+tabOpt <- data.frame("rho" = rOpt, "SSE" = sapply(rOpt, function(i){deviance(hildreth.lu.func(i, model))}))
+head(tabOpt[order(tabOpt$SSE),])
+```
+
+
+```{r}
+#Grafik SSE optimum
+par(mfrow = c(1,1))
+plot(tab$SSE ~ tab$rho , type = "l", xlab = "Rho", ylab = "SSE")
+abline(v = tabOpt[tabOpt$SSE==min(tabOpt$SSE),"rho"], lty = 2, col="red",lwd=2)
+text(x=0.903, y=1.291226, labels = "rho=0.903", cex = 0.8)
+```
+
+Perhitungan yang dilakukan aplikasi `R` menunjukkan bahwa nilai $ρ$ optimum, yaitu saat SSE terkecil terdapat pada nilai $ρ=0.903$. Hal tersebut juga ditunjukkan pada plot. Selanjutnya, model dapat didapatkan dengan mengevaluasi nilai $ρ$ ke dalam fungsi `hildreth.lu.func`, serta dilanjutkan dengan pengujian autokorelasi dengan uji Durbin-Watson. Namun, setelah pengecekan tersebut tidak lupa koefisien regresi tersebut digunakan untuk transformasi balik. Persamaan hasil transformasi itulah yang menjadi persamaan sesungguhnya.
+
+```{r}
+#Model terbaik
+modelHL <- hildreth.lu.func(0.903, model)
+summary(modelHL)
+
+#Transformasi Balik
+cat("y = ", coef(modelHL)[1]/(1-0.903), "+", coef(modelHL)[2],"x", sep = "")
+```
+
+Setelah dilakukan tranformasi balik, didapatkan model dengan metode Hildreth-Lu sebagai berikut. $$y_i=10.24749+0.4886925x_t$$
+
+```{r}
+#Deteksi autokorelasi
+dwtest(modelHL)
+```
+
+Hasil uji Durbin-Watson juga menunjukkan bawah nilai DW sebesar $1.9393$ berada pada selang daerah tidak ada autokorelasi, yaitu pada rentang DU \< DW \< 4-DU atau $1.5444 < DW < 2,4556$. Hal tersebut juga didukung oleh *p-value* sebesar $0.378$, di mana *p-value* \> $\alpha$=5%. Artinya tak tolak $H_0$ atau belum cukup bukti menyatakan bahwa ada autokorelasi dalam data nilai Penjualan dengan metode Hildreth-Lu pada taraf nyata 5%.
+
+Terakhir, akan dibandingkan nilai SSE dari ketiga metode (metode awal, metode Cochrane-Orcutt, dan Hildreth-Lu).
+
+```{r}
+#Perbandingan
+sseModelawal <- anova(model)$`Sum Sq`[-1]
+sseModelCO <- anova(modelCOmanual)$`Sum Sq`[-1]
+sseModelHL <- anova(modelHL)$`Sum Sq`[-1]
+mseModelawal <- sseModelawal/length(sales)
+mseModelCO <- sseModelCO/length(sales)
+mseModelHL <- sseModelHL/length(sales)
+akurasi <- matrix(c(sseModelawal,sseModelCO,sseModelHL,
+                    mseModelawal,mseModelCO,mseModelHL),nrow=2,ncol=3,byrow = T)
+colnames(akurasi) <- c("Model Awal", "Model Cochrane-Orcutt", "Model Hildreth-Lu")
+row.names(akurasi) <- c("SSE","MSE")
+akurasi
+```
+
+Berdasarkan hasil tersebut dapat diketahui bahwa hasil penanganan autokorelasi dengan metode Cochrane-Orcutt dan Hildreth-Lu memiliki SSE yang sama, sebesar $1.291225$.
+
+## Simpulan
+
+Autokorelasi yang terdapat pada data Penjualan terjadi akibat adanya korelasi di antara unsur penyusunnya. Indikator Penjualan yang erat hubungannya dengan perekonomian sangat rawan menjadi penyebab adanya autokorelasi. Adanya autokorelasi menyebabkan model regresi kurang baik karena akan meingkatkan galatnya. Autokorelasi dapat dideteksi secara eksploratif melalui plot sisaan, ACF, dan PACF, serta dengan uji formal Durbin-Watson. Namun, autokorelasi tersebut dapat ditangani dengan metode Cochrane-Orcutt dan Hildreth-Lu. Kedua metode menghasilkan nilai SSE yang sama, artinya keduanya baik untuk digunakan.

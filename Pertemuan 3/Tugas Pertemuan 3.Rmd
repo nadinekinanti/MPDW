@@ -1,6 +1,6 @@
 ---
 title: "Pertemuan 3 - Regresi dengan Peubah Lag"
-author:
+author: Nadine Kinanti - M0401241025
 output:
   html_document:
     theme: yeti

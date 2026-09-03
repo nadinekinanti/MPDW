@@ -24,7 +24,7 @@ library(lmtest)
 library(car)
 ```
 
-# Penjualan dan Iklan
+# Pangsa Pasar dan Harga
 ## Impor Data
 
 ```{r}

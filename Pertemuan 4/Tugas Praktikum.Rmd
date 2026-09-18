@@ -1,6 +1,6 @@
 ---
 title: "Tugas Praktikum 4"
-author: "Nadine Kinanti - M0401241025
+author: "Nadine Kinanti - M0401241025"
 output:
   html_document: default
   pdf_document: default

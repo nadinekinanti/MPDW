@@ -1,19 +1,9 @@
 ---
 title: "Tugas Praktikum 4"
 author: "Nadine Kinanti - M0401241025"
-format:
-  html:
-    self-contained: true
-    embed-resources: true
-    toc: true
-    toc-title: "Daftar Isi"
-    toc-depth: 3
-    toc-location: left
-    code-fold: false
-    code-copy: true
-editor:
-  markdown:
-    wrap: 72
+output:
+  html_document: default
+  pdf_document: default
 date: "2025-09-18"
 ---
 
